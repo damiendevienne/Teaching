@@ -9,8 +9,6 @@ Ce TP vise à appréhender l'utilisation de Lifemap depuis R. Il comporte les é
 * **2. Appréhender Lifemap et les outils de base de Leaflet**
   * 2.1. Prise en main de leaflet depuis R (charger la carte, mettre un marqueur et un popup associé)
   * 2.2. Passage à Lifemap (tuiles + données dans Solr)
-  * 2.3. Construire des requêtes pour récupérer les coordonnées des espèces et des clades d'intérêt (créer fonction)
-  * 2.4. Ajouter un marqueur avec/sans popup + transformer le marqueur en icône personnalisée
 * **3. Visualiser des données génomiques sur Lifemap**
   * récupérer les infos de tous les génomes eucaryotes séquencés
   * Visualiser dans Lifemap le nombre total de génomes séquencés pour chaque espèce
@@ -107,7 +105,8 @@ Une requête des taxid 2,9443 et 2087 sur le "coeur" `taxo` se fait par l'url : 
 
 > **Exo 4**
 > - Visualiser Lifemap en lieu et place de la carte osm et modifier la fonction pour recharger la carte en conséquence.
-> - Écrire une fonction pour récupérer les coordonnées des espèces (à partir d'un vecteur de **taxid**) en utilisant la fonction `fromJSON()` du package `jsonlite` (à installer)
+> - Écrire une fonction pour récupérer les coordonnées des espèces (à partir d'un vecteur de **taxid**) en utilisant la fonction `fromJSON()` du package `jsonlite` (à installer) [^exo4]
+> - Mettre des repères sous formes de ronds rouges transparents avec la fonction addCircleMarkers()
 ```r
 ##nouvelle fonction pour visualiser Lifemap
 newmap<-function(df=NULL) {
@@ -119,6 +118,7 @@ m<-newmap()
 
 ## fonction pour requêtes solr : 
 install.packages("jsonlite")
+require(jsonlite)
 GetCooFromTaxID<-function(taxids) {
   ##taxids is an array that contains taxids.
   ## url cannot be too long, so that we need to cut the taxids (100 max in one chunk)
@@ -145,3 +145,9 @@ GetCooFromTaxID<-function(taxids) {
 ##test de la fonction
 data<-GetCooFromTaxID(c(2,9443,2087))
 ```
+Exo 5
+
+
+
+
+[^Exo4]: Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin. Solr permet aussi de faire des requêtes avec des fautes de frappe, etc.
