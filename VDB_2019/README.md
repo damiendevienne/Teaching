@@ -165,13 +165,34 @@ m #voir !
 ```
 
 ### 3. Visualiser des données génomiques sur Lifemap
-Le but est de récupérer des données génomiques que nous pouvons associer aux espèces de l'arbre de la vie et visualiser alors sur l'arbre ces données. 
-Nous nous intéressons ici 
+Le but est de récupérer des données génomiques que nous pouvons associer aux espèces de l'arbre de la vie pour visualiser sur Lifemap. 
+Nous nous intéressons ici :
 - aux données de séquençage de génome: quantité, représentativité, qualité
 - aux données génomiques : nombre de chromosomes, nombre de gènes annotés, taux de GC dans les génomes
+- autre (à vous de proposer et trouver des jeux de données)
 
 Les données sont récupérées directement sur le ftp du NCBI avec la fonction `read.table()`. Nous nous intéresserons aux données, eucaryotes, moins volumineuses (moins de génomes séquencés que chez les bactéries). Le fichier à récupérer est disponible à l'url suivante : ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/eukaryotes.txt
 
+> **Exo 5**
+> - Récupérer les données sur le ftp du NCBI. 
+  Attention avec la fonction `read.table()` : les séparateurs de champs sont des tabulations (utiliser `sep="\t"`), il y a un header (utiliser `header=TRUE`), les apostrophes ne doivent pas être considéré comme des guillemets contrairement aux vrais guillemets (`"`) (utiliser `quote="\""`) et la ligne commençant par un `#` ne devrait pas être traitée comme une ligne de commentaires puisque c'est celle qui contient le nom des colonnes (utiliser `comment.char=""`).  
+> - compter le nombre de génomes séquencés par espèce (fonction `table()`) et visualiser cette info sous forme de cercles de tailles proportionnelles à cette valeur.
+> - 
+```r
+##récupérer les infos
+EukGenomeInfo<-read.table("ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/eukaryotes.txt", sep="\t", header=T, quote="\"", comment.char="")
+###table du nombre de génomes séquencés
+nbGenomeSequenced<-table(EukGenomeInfo$TaxID)
+### liste des taxids uniques
+taxidsofinterest<-names(nbGenomeSequenced)
+### coordonnées 
+coo<-GetCooFromTaxID(taxidsofinterest)
+coo$nbGsequenced<-as.numeric(nbGenomeSequenced[coo$taxid])
+### carte
+m<-newmap(coo)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGsequenced/10, color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, popup = as.character(coo$nbGsequenced))
+m
+```
 ___
 ##### Aller plus loin
 - Exo 4 : Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin et pas du taxid. En tolérant éventuellement les fautes de frappe, etc. (solr permet cela !!)
