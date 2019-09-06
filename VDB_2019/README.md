@@ -105,8 +105,8 @@ Une requête des taxid 2,9443 et 2087 sur le "coeur" `taxo` se fait par l'url : 
 
 > **Exo 4**
 > - Visualiser Lifemap en lieu et place de la carte osm et modifier la fonction pour recharger la carte en conséquence.
-> - Écrire une fonction pour récupérer les coordonnées des espèces (à partir d'un vecteur de **taxid**) en utilisant la fonction `fromJSON()` du package `jsonlite` (à installer) [^1]
-> - Mettre des repères sous formes de ronds rouges transparents avec la fonction addCircleMarkers()
+> - Écrire une fonction pour récupérer les coordonnées des espèces (à partir d'un vecteur de **taxid**) en utilisant la fonction `fromJSON()` du package `jsonlite` (à installer) <sup>[Aller plus loin](#aller-plus-loin)</sup>
+> - Mettre des repères sous formes de ronds rouges transparents avec la fonction `addCircleMarkers()` pour les trois taxid de l'exemple.
 ```r
 ##nouvelle fonction pour visualiser Lifemap
 newmap<-function(df=NULL) {
@@ -144,10 +144,16 @@ GetCooFromTaxID<-function(taxids) {
 
 ##test de la fonction
 data<-GetCooFromTaxID(c(2,9443,2087))
+
+##Mettre les repères sur la carte sous forme de ronds rouuges
+m<-newmap(data)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, opacity=0.5,color="red")
+m
 ```
 Exo 5
 
 
 
-
-[^1]: Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin. Solr permet aussi de récupérer les coordonnées, même en cas de faute de frappe, etc.
+___
+##### Aller plus loin
+- Exo 4 : Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin et pas du taxid. En tolérant éventuellement les fautes de frappe, etc.
