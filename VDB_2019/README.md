@@ -105,7 +105,7 @@ Une requête des taxid 2,9443 et 2087 sur le "coeur" `taxo` se fait par l'url : 
 
 > **Exo 4**
 > - Visualiser Lifemap en lieu et place de la carte osm et modifier la fonction pour recharger la carte en conséquence.
-> - Écrire une fonction pour récupérer les coordonnées des espèces (à partir d'un vecteur de **taxid**) en utilisant la fonction `fromJSON()` du package `jsonlite` (à installer) [^exo4]
+> - Écrire une fonction pour récupérer les coordonnées des espèces (à partir d'un vecteur de **taxid**) en utilisant la fonction `fromJSON()` du package `jsonlite` (à installer) [^1]
 > - Mettre des repères sous formes de ronds rouges transparents avec la fonction addCircleMarkers()
 ```r
 ##nouvelle fonction pour visualiser Lifemap
@@ -150,4 +150,4 @@ Exo 5
 
 
 
-[^exo4]: Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin. Solr permet aussi de récupérer les coordonnées, même en cas de faute de frappe, etc.
+[^1]: Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin. Solr permet aussi de récupérer les coordonnées, même en cas de faute de frappe, etc.
