@@ -34,7 +34,7 @@ En R, avec le package ape, il est simple de générer de arbres avec la fonction
 > + `?` Précéder le nom de la fonction d'un point d'interrogation donne accès à l'aide.
 
 
-```{r}
+```r
 install.packages(ape) ## ou require(ape) si déjà installé
 tree<-rtree(12)
 plot(tree) ### OK
@@ -57,7 +57,7 @@ Leaflet existe pour R ([ici](https://rstudio.github.io/leaflet/)). Il permet d'u
 > Se promener dans Lifemap ainsi.
 
 
-```{r}
+```r
 install.packages(leaflet) ## ou require(leaflet) si déjà installé
 m<-leaflet()
 m<-addTiles("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
