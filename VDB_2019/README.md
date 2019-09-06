@@ -150,4 +150,4 @@ Exo 5
 
 
 
-[^Exo4]: Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin. Solr permet aussi de faire des requêtes avec des fautes de frappe, etc.
+[^exo4]: Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin. Solr permet aussi de récupérer les coordonnées, même en cas de faute de frappe, etc.
