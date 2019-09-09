@@ -149,7 +149,8 @@ data<-GetCooFromTaxID(c(2,9443,2087))
 
 ##Mettre les repères sur la carte sous forme de ronds rouuges
 m<-newmap(data)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, stroke = FALSE, fillOpacity = 0.5,color="red", label=~sci_name)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, stroke = FALSE, 
+fillOpacity = 0.5,color="red", label=~sci_name)
 m
 
 ### Utiliser une image comme icône à la place du marqueur classique 
@@ -176,7 +177,7 @@ Les données sont récupérées directement sur le ftp du NCBI avec la fonction 
 > **Exo 5**
 > - Récupérer les données sur le ftp du NCBI. 
   Attention avec la fonction `read.table()` : les séparateurs de champs sont des tabulations (utiliser `sep="\t"`), il y a un header (utiliser `header=TRUE`), les apostrophes ne doivent pas être considéré comme des guillemets contrairement aux vrais guillemets (`"`) (utiliser `quote="\""`) et la ligne commençant par un `#` ne devrait pas être traitée comme une ligne de commentaires puisque c'est celle qui contient le nom des colonnes (utiliser `comment.char=""`).  
-> - compter le nombre de génomes séquencés par espèce (fonction `table()`) et visualiser cette info sous forme de cercles de tailles proportionnelles à cette valeur.
+> - compter le nombre de génomes séquencés par espèce (fonction `table()`) et visualiser cette info sous forme de cercles de taille proportionnelle à cette valeur.
 > - 
 ```r
 ##récupérer les infos
@@ -193,6 +194,69 @@ m<-newmap(coo)
 m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGsequenced/10, color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, popup = as.character(coo$nbGsequenced))
 m
 ```
+
+### 4. Aller plus loin dans l'interactivité avec shiny 
+Shiny vous a été présenté dans une séance antérieure. Les bases de la création d'applications avec shiny sont rappelées ici (par exemple) : https://shiny.rstudio.com/tutorial/
+
+Le code ci-dessous (modifié depuis https://rstudio.github.io/leaflet/shiny.html) permet de visualiser les données de 1000 éruptions volcaniques survenues dans les îles Fidgi depuis 1964, avec leur localisation, leur intensité, leur profondeur. Différents types de boutons permettent de filtrer ce qui est affiché sur la carte. 
+```r
+library(shiny)
+library(leaflet)
+library(viridis)
+library(RColorBrewer)
+
+ui <- bootstrapPage(
+  tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
+  leafletOutput("map", width = "100%", height = "100%"),
+  absolutePanel(top = 10, right = 10,
+    sliderInput("range", "Magnitudes", min(quakes$mag), max(quakes$mag),
+      value = range(quakes$mag), step = 0.1
+      ),
+    selectInput("depth", "Depth of earthquakes (km)",c("all","<200","200-500",">500"))
+    )
+  )
+
+server <- function(input, output, session) {
+##set palette function
+  pal<-colorNumeric("magma", quakes$mag)
+  # Reactive expression for the data subsetted to what the user selected
+  filteredData <- reactive({
+    k<-quakes[quakes$mag >= input$range[1] & quakes$mag <= input$range[2],]
+    if (input$depth!='all') {
+      if (input$depth=="<200") k<-k[k$depth<200,]
+      if (input$depth=="200-500") k<-k[k$depth>=200&k$depth<=500,]
+      if (input$depth==">500") k<-k[k$depth>500,]
+    }
+    k
+  })
+
+  output$map <- renderLeaflet({
+  # Use leaflet() here, and only include aspects of the map that
+    # won't need to change dynamically (at least, not unless the
+    # entire map is being torn down and recreated).
+    m<-leaflet(quakes)
+    m<-addTiles(m)
+    m<-fitBounds(m, ~min(long), ~min(lat), ~max(long), ~max(lat))
+    m<-addLegend(m, position = "bottomright", pal = pal, values = ~mag)
+  })
+  # Incremental changes to the map (in this case, replacing the
+  # circles when a new color is chosen) should be performed in
+  # an observer. Each independent set of things that can change
+  # should be managed in its own observer.
+  observe({
+    proxy<-leafletProxy("map", data = filteredData())
+    proxy<-clearShapes(proxy)
+    proxy<-addCircles(proxy, radius = ~10^mag/10, weight = 1, color = "#777777", fillColor = ~pal(mag), fillOpacity = 0.7, popup = ~paste(mag))
+  })
+}
+
+shinyApp(ui, server)
+```
+
+> **Exo 6**
+> - En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices précédents, créez une application Shiny fonctionnelle permettant de visualiser les données biologiques vues plus haut dans Lifemap. Les plus courageu.x.ses pourront créer une barre de recherche aussi ! 
+> Attention : Ne pas oublier de mettre des légendes.
+
 ___
 ##### Aller plus loin
 - Exo 4 : Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin et pas du taxid. En tolérant éventuellement les fautes de frappe, etc. (solr permet cela !!)
