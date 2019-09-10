@@ -1,6 +1,6 @@
 # Visualisation de (très) grands arbres: Lifemap
 
-Le cours est disponible en pdf à cette adresse : ... 
+Le cours est disponible en ligne. 
 
 ## Objectifs
 Ce TP vise à appréhender l'utilisation de Lifemap depuis R, et se familiariser par la même occasion avec l'outil de cartographie leaflet.
@@ -10,17 +10,13 @@ Ce TP vise à appréhender l'utilisation de Lifemap depuis R, et se familiariser
   * Prise en main de leaflet depuis R (charger la carte, mettre un marqueur et un popup associé)
   * Passage à Lifemap (tuiles + données dans Solr)
 * **3. Visualiser des données génomiques sur Lifemap**
-  * Récupérer les infos de tous les génomes eucaryotes séquencés
-  * Visualiser dans Lifemap le nombre total de génomes séquencés pour chaque espèce
-  * Visualiser dans Lifemap le nombre de génomes séquencés et assemblés entièrement pour chaque espèce
-  * Visualiser le taux de GC de chaque espèces séquencée selon deux modalités (couleur et taille de cercle).
+  * Récupération des données (infos sur génomes eucaryotes séquencés)
+  * Varier la taille des marqueurs (nombre de génomes séquencés et/ou assemblés)
+  * Varier la couleur des marqueurs (%GC, taille des génomes)
+  * La notion de 'groupes'
 * **4. Aller plus loin dans l'interactivité avec shiny**
-  * Avec Shiny, créer une version de Lifemap permettant de choisir la donnée à visualiser
-  * Créer une barre de recherche
-
-## Jeux de données 
-* Serveur de tuiles Lifemap
-* Données 
+  * Exemple d'application cartographique simple avec shiny et leaflet
+  * Création d'une application Lifemap pour visualiser les données issues du séquençage 
 
 
 ### 1. Intro grands arbres : illustration rapide du problème
@@ -248,6 +244,8 @@ DF$tauxgcmoyen<-tauxgcmoyen
 SizeGenomeMb<-sapply(DF$taxid, function(x,tab) mean(tab[which(tab$TaxID==x),]$Size..Mb., na.rm=TRUE), tab=EukGenomeInfo)
 DF$SizeGenomeMb<-SizeGenomeMb 
 
+##GROUPE AUQUEL CHAQUE TAXID apprtient  
+
 ### REGARDER OÙ SONT TOUS CES GÉNOMES SUR LA CARTE
 m<-newmap(DF)
 m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = 10, color = "red", stroke = TRUE, fillOpacity = 0.5, label=~sci_name)
@@ -320,33 +318,66 @@ m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius=5,
 fillColor = ~pal(tauxgcmoyen), stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
 popup = ~paste(as.character(tauxgcmoyen)," %", sep=""))
 ## et la légende
-m<-addLegend(m, position = "bottomright", pal = pal, values = ~tauxgcmoyen)
+m<-addLegend(m, position = "bottomright", pal = pal, values = ~tauxgcmoyen, title = "%GC moyen des génomes séquencés")
 m
 
 
 ##taille des génomes
 library(RColorBrewer)
-pal<-colorNumeric("Spectral",DF$SizeGenomeMb)
+pal<-colorNumeric("Spectral",DF$SizeGenomeMb, reverse=TRUE)
 
 m<-newmap(DF)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius=5, 
+## et la légendem<-addCircleMarkers(m, lng=~lon, lat=~lat, radius=~SizeGenomeMb^(1/3), 
 fillColor = ~pal(SizeGenomeMb), stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
 popup = ~paste(as.character(SizeGenomeMb)," Mb", sep=""))
-## et la légende
-m<-addLegend(m, position = "bottomright", pal = pal, values = ~SizeGenomeMb)
+m<-addLegend(m, position = "bottomright", pal = pal, values = ~SizeGenomeMb, title="Size of genomes in Mb")
 m
 
 ```
+#### La notion de 'groupes'
+Il est possible d'associer les marqueurs à des groupes puis de décider d'afficher tel ou tel groupe de façon sélective. Il suffit
+- d'ajouter `group="groupname"` aux arguments des fonctions `addCircleMarkers()` et éventuellement `addLegend()` (si les différents groupes ont différentes légendes.
+> **Exo 8**
+>  - Créez des marqueurs distincts pour le taux de GC des Fungi, Animals, Plants, Protists et Others (nécessite de mettre à jour le data.frame servant en entrée)
+>  - Utilisez ensuite la fonction `addLayersControl()` pour permettre à l'utilisateur de la carte de choisir pour quel(s) groupe(s) d'espèces il souhaite voir la donnée. 
+```r
+##ajouter une colonne à DF avec le Group:
+TaxID.et.Group<-EukGenomeInfo[!duplicated(EukGenomeInfo$TaxID),c("TaxID","Group")]
+groups<-as.character(TaxID.et.Group[,2])
+names(groups)<-TaxID.et.Group[,1]
+DF$Group<-groups[DF$taxid]
+
+pal<-colorNumeric("Spectral",DF$tauxgcmoyen, reverse=TRUE)
+m<-newmap(DF)
+
+#size
+for (i in unique(DF$Group)) {
+  print(i)
+  m<-addCircleMarkers(m, lng=~lon[Group==i], lat=~lat[Group==i], radius=10, 
+  fillColor = ~palgc(tauxgcmoyen[Group==i]), stroke = FALSE, fillOpacity = 0.5, label=~sci_name[Group==i], 
+  popup = ~paste(as.character(tauxgcmoyen[Group==i])," %", sep=""), group=i)
+  }
+  
+m<-addLegend(m, position = "bottomright", pal = palgc, values = ~tauxgcmoyen)
+m<-addLayersControl(m,
+    overlayGroups = unique(DF$Group),
+    options = layersControlOptions(collapsed = TRUE)
+  )
+m
+```
+
+
 
 ### 4. Aller plus loin dans l'interactivité avec shiny 
-Shiny vous a été présenté dans une séance antérieure. Un tutoriel peut aussi être trouvé ici : https://shiny.rstudio.com/tutorial/
+On voit dans l'exemple précédent que rendre la carte interactive (au delà du zoom) est très limité si l'on se cantonne à l'utilisation du package `leaflet`. La fonction `addLayersControl()` peut être oubliée si l'on passe à l'utilisation de **Shiny**, qui vous a été présenté dans une séance antérieure. Un tutoriel peut aussi être trouvé ici : https://shiny.rstudio.com/tutorial/
+
+#### Exemple d'application cartographique simple avec shiny et leaflet
 
 Le code ci-dessous (modifié depuis https://rstudio.github.io/leaflet/shiny.html) permet de créer une application web pour visualiser les données de 1000 éruptions volcaniques survenues dans les îles Fidgi depuis 1964, avec leur localisation, leur intensité, leur profondeur. Différents types de boutons permettent de filtrer ce qui est affiché sur la carte. 
-Notez l'utilisation de la fonction `leafletProxy()` qui remplace la fonction `leaflet()` pour permettre de ne pas avoir à recharger l'ensemble de la carte quand seulement des filtres ou de nouveaux styles sont appliqués à quelques layers. 
+Notez l'utilisation de la fonction `leafletProxy()` qui peut remplacer la fonction `leaflet()` si on ne souhaite pas recharger l'ensemble de la carte et des couches quand seulement quelques modifications ou filtres sont appliqués à certaines couches.  
 
-Notez l'utilisation de `reactive` et `observe`. 
-La différence entre les deux est ténue mais on peut dire que : 
-- la fonction `reactive()` surveille si des données en entrée changent, et renvoie une nouvelle valeur, utilisée à l'extérieur. 
+Notez l'utilisation des fonctions `reactive()` et `observe()`. La différence entre les deux est ténue mais on peut simplifier ainsi : 
+- la fonction `reactive()` surveille si des données en entrée changent, et renvoie une nouvelle valeur, qui sera utilisée par une fonction à l'extérieur (généralement une fonction `observe`. 
 - la fonction `observe()` ne renvoie pas de données en dehors. Elle surveille simplement si les données à l'intérieur changent et agit en conséquence (ici pour updater les layers). 
 
 ```r
@@ -402,19 +433,25 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 ```
+#### Création d'une application Lifemap pour visualiser les données issues du séquençage 
 
-> **Exo 6**
-> En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices précédents et dans les séances précédentes, vous allez créer une une application Shiny fonctionnelle permettant de visualiser des données de biologiques vues plus haut, de façon interactive. Plus spécifiquement, l'application permettra : 
-> - de visualiser (selectInput)
+> **Exo 9**
+> En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices et dans les séances précédentes, vous allez créer une une application Shiny fonctionnelle permettant de visualiser les données vues plus haut, de façon interactive. Plus spécifiquement, l'application permettra : 
+> - de visualiser (selectInput) dans un premier bloc : 
+>   - le nombre de génomes séquencés
+> - de visualiser (selectInput) dans un second bloc : 
 >   - le taux de GC des génomes
 >   - leur taille en Mb
 >  - de filtrer
->    - par Groupe (Fungi, Animal, Plant, Protist) 
->    - par date de séquençage (avec un slider)
+>    - par Groupe (Fungi, Animals, Plants, Protists)
+>    - par qualité d'assemblage 
+>    - par date (année) de séquençage (avec un slider) -> observation de l'explosion des projets de séquençage.
 >
 > Ne pas oublier les légendes.
+> [aller plus loin](#aller-plus-loin)  
+> 
 
 ___
 ##### Aller plus loin
 - Exo 4 : Si vous avez le temps, créez aussi une fonction permettant de récupérer les coordonnées à partir du nom latin et pas du taxid. En tolérant éventuellement les fautes de frappe, etc. (solr permet cela !!)
-- 
+- Exo 9 : Les possibilités d'amélioration sont infinies : ajouter la visualisation du nombre de chromosomes des génomes séquencés ; visualiser les mêmes informations pour les génomes bactériens et archéens ; Imaginer comment insérer une barre de recherche pour localiser les espèces par leur nom ; Créer un système permettant de localiser dans l'arbre où se trouve une espèce que l'on ne connaît que par sa séquence (placement phylogénétique). 
