@@ -29,9 +29,7 @@ En R, avec le package ape, il est simple de générer de arbres avec la fonction
 > **Exo 1** 
 > - Installer ape 
 > - Générer un arbre de N feuilles (N petit puis N grand)
-> - Le visualiser
->
-> Précéder le nom de la fonction d'un `?` donne accès à l'aide.
+> - Le visualiser. Observer le problème.
 ```r
 install.packages(ape) ## ou require(ape) si déjà installé
 tree<-rtree(12)
@@ -40,7 +38,7 @@ tree2<-rtree(1000)
 plot(tree) ### PAS OK
 plot(tree, show.tip.label=F, type="u") 
 ```
-Pour aller plus loin dans la visualisation d'arbres avec R : utiliser le package ggtree. Bonne présentation par l'auteur des fonctionnalitées ici : https://guangchuangyu.github.io/presentation/2016-ggtree-chinar/
+Pour aller plus loin dans la visualisation d'arbres avec R : utiliser le package ggtree. Bonne présentation par l'auteur des fonctionnalitées ici : https://guangchuangyu.github.io/presentation/2016-ggtree-chinar/. 
 
 
 ### 2. Appréhender Lifemap et les outils de base de Leaflet
@@ -50,15 +48,20 @@ Les tuiles formant le fond de carte de Lifemap sont accessibles comme celles for
 
 Afficher ces tuiles, zoomer, paner, dans un navigateur, se fait via des librairies javascript. Une des plus utilisées est [leaflet](https://leafletjs.com/). Suivre le lien pour voir l'étendue des possibilités.
 
-Leaflet est utilisable depuis R  grâce au package `leaflet` (https://rstudio.github.io/leaflet/). Intégration possible avec shiny pour créer des applis plus complètes (voir la fin du TP.)
+Leaflet est utilisable depuis R  grâce au package `leaflet` (https://rstudio.github.io/leaflet/). Intégration possible avec shiny pour créer des applis plus complètes (voir la fin du TP).
+Le code ci-dessous permet de charger un fond de carte osm avec leaflet, et d'ajouter un marqueur au niveau de la ville de Lyon. 
+```r
+require("leaflet")
+m<-leaflet()
+m<-addTiles(m)
+m<-addMarkers(m, lng=4.85, lat=45.75, label="Ici Lyon")
+```
 
 > **Exo 2** 
 > - Installer Leaflet pour R
-> - Charger une carte géographique (en mentionnant explicitement la source des tuiles)
-> - Mettre un marqueur sur la ville de Lyon (longitude = 45.75, latitude = 4.85) avec un tooltip lorsque la souris passe dessus.
-> - Mettre ensuite un marqueur sur la ville de Paris et visualiser à nouveau la carte. Qu'observe-t-on ?
+> - Exécuter le code précédent, mais en mentionnant explicitement la source des tuiles : https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+> - Ajouter (en plus de lyon) un marqueur sur la ville de Paris (longitude = 48.85, latitude = 2.35) et visualiser à nouveau la carte. Qu'observe-t-on ?
 > - Écrire une fonction permettant de 'recharger' une carte vierge (utile pour la suite du TP).
-
 
 ```r
 install.packages(leaflet) ## ou require(leaflet) si déjà installé
@@ -78,37 +81,45 @@ newmap<-function() {
 }
 ## Pour créer une nouvelle carte il suffit ensuite de taper : 
 m<-newmap()
+## Pour voir la carte : 
+m 
 ```
-La fonction `leaflet()`peut aussi prendre en entrée des données ( `leaflet(data=...)` ), sous forme de data.frame ou autre. Il est ensuite possible de faire référence à ces données depuis les fonctions ayant l'objet 'carte' renvoyé par `leaflet()` comme premier argument (`addMarkers()`, `addCircles()`, etc.).
+La fonction `leaflet()`peut aussi prendre en entrée des données avec `leaflet(data=...)`, sous forme de data.frame ou autre. Il est ensuite possible de faire référence aux éléments présents dans le data frame depuis les fonctions `addMarkers()`, `addCircles()`, `addCircleMarkers()`, etc. en ne mentionnant que le nom de la colonne d'intérêt précédé du tilde (`~lat` pour latitude par exemple). 
 
 > **Exo 3**
 > - Créer une data.frame avec les noms "Lyon" et "Paris" dans la première colonne, leurs longitude dans la seconde et leur latitude dans la troisième.
 > - Visualiser les marqueurs pour ces deux villes en donnant ce data.frame en entrée à la fonction `leaflet()`
-> - Modifier la fonction permettant de recharger une carte nouvelle pour prendre cela en entrée.
+> - Modifier la fonction permettant de recharger une carte nouvelle pour permettre de prendre un data frame en entrée.
 ```r
 dd<-data.frame(cities=c("Paris","Lyon"), longi=c(2.35, 4.85),lati=c(48.85,45.75))
 m<-leaflet(dd)
 m<-addTiles(m, url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 m<-addMarkers(m, lng=~longi,lat=~lati)
 m
-```
 
+##fonction mise à jour :
+newmap<-function(data=NULL) {
+    map<-leaflet(data)
+    map<-addTiles(map, url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+    return(map)
+}
+```
 
 #### Passage à Lifemap (tuiles + données dans Solr)
 Les tuiles de Lifemap ont pour url http://lifemap-ncbi.univ-lyon1.fr/osm_tiles/{z}/{x}/{y}.png. 
 
-Les données additionnelles de Lifemap sont stockées dans deux 'coeurs' [Solr](https://lucene.apache.org/solr/). On y trouve les coordonnées de toutes les espèces et les clades (tous les noeuds et les feuilles de l'arbre), ainsi que les noms latins, les synonymes, le nombre de descendants, leurs ascendants, etc. Aller voir directement sur http://lifemap-ncbi.univ-lyon1.fr:8983/solr/#/ pour mieux comprendre. 
+Les données additionnelles de Lifemap sont stockées dans deux 'coeurs' [Solr](https://lucene.apache.org/solr/). On y trouve les coordonnées de toutes les espèces et de tous les clades (un clade = un groupe monophylétique), ainsi que les noms latins, les synonymes, le nombre de descendants, leurs ascendants, etc. Aller voir directement sur http://lifemap-ncbi.univ-lyon1.fr:8983/solr/#/ pour mieux comprendre. 
 
 Au NCBI, et donc dans Lifemap, les espèces et les clades sont identifiés par un identifiant unique appelé **taxid**. 
 
-Une requête des taxid 2, 9443 et 2087 sur le "coeur" `taxo` se fait par l'url : http://lifemap-ncbi.univ-lyon1.fr:8983/solr/taxo/select?q=taxid:(2%209443%202087)&wt=json&rows=1000. Notons que le `%20` remplace l'espace.
+Une requête des taxid 2, 9443 et 2087 sur le "coeur" `taxo` (qui contient les données taxonomiques) se fait par l'url : http://lifemap-ncbi.univ-lyon1.fr:8983/solr/taxo/select?q=taxid:(2%209443%202087)&wt=json&rows=1000. Notons que le `%20` remplace l'espace.
 
 > **Exo 4**
-> - Visualiser Lifemap en lieu et place de la carte osm et modifier la fonction pour recharger la carte en conséquence.
+> - Visualiser Lifemap en lieu et place de la carte osm précédente et modifier la fonction qui crée une nouvelle carte vierge en conséquence.
 > - Écrire une fonction pour récupérer les coordonnées des espèces (à partir d'un vecteur de **taxid**) en utilisant la fonction `fromJSON()` du package `jsonlite` (à installer) <sup>[Aller plus loin](#aller-plus-loin)</sup>
-> - Mettre des repères sous formes de ronds avec la fonction `addCircleMarkers()` pour les trois taxids de l'exemple.
-> - Jouer avec l'opacité, la présence de bordure, la couleur, la taille, etc. 
-> - [rigolo] : n'importe quelle image peut servir d'icône de marqueur. On peut par exemple mettre une [silhouette de cheval](https://svgsilh.com/png-512/156496-cddc39.png) à *Equus caballus* (taxid : 9796). Essayez si vous avez le temps
+> - Récupérer les coordonnées des trois taxids de l'exemple et les représenter dans Lifemap sous forme forme de ronds (fonction `addCircleMarkers()`).
+> - Jouer avec l'opacité, la présence de bordure, la couleur, la taille, etc. Taper `?addCircleMarker()` dans R pour avoir de l'aide.
+> - [rigolo] : n'importe quelle image peut servir d'icône de marqueur. On peut par exemple mettre une [silhouette de cheval](https://svgsilh.com/png-512/156496-cddc39.png) à *Equus caballus* (taxid : 9796). Essayez si vous avez le temps (explication détaillée [ici](https://rstudio.github.io/leaflet/markers.html)).
 ```r
 ##nouvelle fonction pour visualiser Lifemap
 newmap<-function(df=NULL) {
@@ -137,7 +148,7 @@ GetCooFromTaxID<-function(taxids) {
     #do the request :
     data_sub<-fromJSON(url)
     DATA<-rbind(DATA,data_sub$response$docs[,c("taxid","lon","lat", "sci_name","zoom","nbdesc")])
-    i<-i+99
+    i<-i+100
   } 
   for (j in 1:ncol(DATA)) DATA[,j]<-unlist(DATA[,j])
   class(DATA$taxid)<-"character"
@@ -166,19 +177,44 @@ m #voir !
 ```
 
 ### 3. Visualiser des données génomiques sur Lifemap
-Le but est de récupérer des données génomiques que nous pouvons associer aux espèces de l'arbre de la vie pour visualiser sur Lifemap. 
+Le but est de récupérer des données génomiques que nous pouvons associer aux espèces de l'arbre de la vie et visualiser sur Lifemap. 
 Nous nous intéressons ici :
-- aux données de séquençage de génome: quantité, représentativité, qualité
-- aux données génomiques : nombre de chromosomes, nombre de gènes annotés, taux de GC dans les génomes
-- autre (à vous de proposer et trouver des jeux de données)
+- aux données de séquençage de génomes: quantité, représentativité, qualité
+- aux données génomiques à proprement parler: nombre de chromosomes, nombre de gènes annotés, taux de GC dans les génomes
 
-Les données sont récupérées directement sur le ftp du NCBI avec la fonction `read.table()`. Nous nous intéresserons aux données, eucaryotes, moins volumineuses (moins de génomes séquencés que chez les bactéries). Le fichier à récupérer est disponible à l'url suivante : ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/eukaryotes.txt
+Les données seront récupérées directement sur le ftp du NCBI avec la fonction `read.table()`. Nous nous intéresserons aux données, eucaryotes, moins volumineuses (moins de génomes séquencés que chez les bactéries). Le fichier à récupérer est disponible à l'url suivante : ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/eukaryotes.txt. L'explication des champs présents dans ce fichier est la suivante :
+
+|Column|Description|
+|---|---|
+| #Organism/Name | Organism name at the species level   |
+| BioProject | BioProject Accession number (from BioProject database) |
+|Group |         Commonly used organism groups:  Animals, Fungi, Plants, Protists;|
+|SubGroup|       NCBI Taxonomy level below group: Mammals, Birds, Fishes, Flatworms, Insects, Amphibians, Reptiles, Roundworms, Ascomycetes, Basidiomycetes, Land Plants, Green Algae, Apicomplexans, Kinetoplasts;|
+|Size (Mb)     | Total length of DNA submitted for the project |
+|GC%     |       Percent of nitrogenous bases (guanine or cytosine) in DNA submitted for the project|
+|Assembly      | Name of the genome assembly (from NCBI Assembly database)|
+|Chromosomes  |  Number of chromosomes submitted for the project       |
+|Organelles  |   Number of organelles submitted for the project |
+|Plasmids     |  Number of plasmids submitted for the project |
+|WGS          |  Four-letter Accession prefix followed by version as defined in WGS division of GenBank/INSDC|
+|Scaffolds |     Number of scaffolds in the assembly|
+|Genes      |    Number of Genes annotated in the assembly|
+|Proteins    |   Number of Proteins annotated in the assembly | 
+|Release Date |  First public sequence release for the project|
+|Modify Date  |  Sequence modification date for the project|
+|Status   |      Highest level of assembly: <br> Chromosomes: one or more chromosomes are assembled<br> Scaffolds or contigs: sequence assembled but no chromosomes <br>SRA or Traces: raw sequence data available<br> No data: no data is connected to the BioProject ID
+
+*Attention: le nom des colonnes change après l'import dans R !*
 
 > **Exo 5**
 > - Récupérer les données sur le ftp du NCBI. 
-  Attention avec la fonction `read.table()` : les séparateurs de champs sont des tabulations (utiliser `sep="\t"`), il y a un header (utiliser `header=TRUE`), les apostrophes ne doivent pas être considéré comme des guillemets contrairement aux vrais guillemets (`"`) (utiliser `quote="\""`) et la ligne commençant par un `#` ne devrait pas être traitée comme une ligne de commentaires puisque c'est celle qui contient le nom des colonnes (utiliser `comment.char=""`).  
-> - compter le nombre de génomes séquencés par espèce (fonction `table()`) et visualiser cette info sous forme de cercles de taille proportionnelle à cette valeur.
-> - 
+  Attention avec la fonction `read.table()` : les séparateurs de champs sont des tabulations (utiliser `sep="\t"`), il y a un header (utiliser `header=TRUE`), les apostrophes ne doivent pas être considéré comme des guillemets contrairement aux vrais guillemets (`"`) (utiliser `quote="\""`) et la ligne commençant par un `#` ne devrait pas être traitée comme une ligne de commentaires puisque c'est celle qui contient le nom des colonnes (utiliser `comment.char=""`).  Note : il est possible d'utiliser l'url du fichier directement dans la fonction `read.table()` sans avoir à télécharger le fichier sur le disque préalablement.
+> - compter le nombre total de génomes séquencés par espèce (fonction `table()`)
+> - récupérez les coordonnées des taxids ayant au moins un génome séquencé.
+> - visualiser le nombre de génomes séquencés par espèce sous forme de cercles de taille proportionnelle à cette valeur.
+> - visualiser le nombre de génomes séquencés par espèce sous forme de cercles de même diamètre mais avec un dégradé de couleurs. 
+> - compter puis visualiser ensuite le **nombre** de génomes entièrement assemblés (`Status == "Chromosome"`)
+> - Visualiser la **proportion** de génomes entièrement assemblés par espèce.  
 ```r
 ##récupérer les infos
 EukGenomeInfo<-read.table("ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/eukaryotes.txt", sep="\t", header=T, quote="\"", comment.char="")
@@ -196,9 +232,16 @@ m
 ```
 
 ### 4. Aller plus loin dans l'interactivité avec shiny 
-Shiny vous a été présenté dans une séance antérieure. Les bases de la création d'applications avec shiny sont rappelées ici (par exemple) : https://shiny.rstudio.com/tutorial/
+Shiny vous a été présenté dans une séance antérieure. Un tutoriel peut aussi être trouvé ici : https://shiny.rstudio.com/tutorial/
 
-Le code ci-dessous (modifié depuis https://rstudio.github.io/leaflet/shiny.html) permet de visualiser les données de 1000 éruptions volcaniques survenues dans les îles Fidgi depuis 1964, avec leur localisation, leur intensité, leur profondeur. Différents types de boutons permettent de filtrer ce qui est affiché sur la carte. 
+Le code ci-dessous (modifié depuis https://rstudio.github.io/leaflet/shiny.html) permet de créer une application web pour visualiser les données de 1000 éruptions volcaniques survenues dans les îles Fidgi depuis 1964, avec leur localisation, leur intensité, leur profondeur. Différents types de boutons permettent de filtrer ce qui est affiché sur la carte. 
+Notez l'utilisation de la fonction `leafletProxy()` qui remplace la fonction `leaflet()` pour permettre de ne pas avoir à recharger l'ensemble de la carte quand seulement des filtres ou de nouveaux styles sont appliqués à quelques layers. 
+
+Notez l'utilisation de `reactive` et `observe`. 
+La différence entre les deux est ténue mais on peut dire que : 
+- la fonction `reactive()` surveille si des données en entrée changent, et renvoie une valeur utilisée à l'extérieur. 
+- la fonction `observe()` ne renvoie pas de données en dehors. Elle surveille simplement si les données à l'intérieur changent. 
+
 ```r
 library(shiny)
 library(leaflet)
@@ -254,7 +297,7 @@ shinyApp(ui, server)
 ```
 
 > **Exo 6**
-> - En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices précédents, créez une application Shiny fonctionnelle permettant de visualiser les données biologiques vues plus haut dans Lifemap. Les plus courageu.x.ses pourront créer une barre de recherche aussi ! 
+> - En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices précédents, créez une application Shiny fonctionnelle permettant de visualiser des données biologiques (celles vues dans les exercices précédents) sur Lifemap. 
 > Attention : Ne pas oublier de mettre des légendes.
 
 ___
