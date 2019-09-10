@@ -144,7 +144,7 @@ GetCooFromTaxID<-function(taxids) {
     taxids_sub<-taxids[i:(i+99)]
     taxids_sub<-taxids_sub[!is.na(taxids_sub)]
     taxids_sub<-paste(taxids_sub, collapse="%20") #accepted space separator in url
-    url<-paste("http://lifemap-ncbi.univ-lyon1.fr:8983/solr/taxo/select?q=taxid:(",taxids_sub,")&wt=json&rows=1000",sep="", collapse="")
+    url<-paste("http://lifemap-ncbi.univ-lyon1.fr:8080/solr/taxo/select?q=taxid:(",taxids_sub,")&wt=json&rows=1000",sep="", collapse="")
     #do the request :
     data_sub<-fromJSON(url)
     DATA<-rbind(DATA,data_sub$response$docs[,c("taxid","lon","lat", "sci_name","zoom","nbdesc")])
@@ -206,29 +206,136 @@ Les données seront récupérées directement sur le ftp du NCBI avec la fonctio
 
 *Attention: le nom des colonnes change après l'import dans R !*
 
-> **Exo 5**
+#### Préparation des données
+
+> **~~Exo 5~~**
 > - Récupérer les données sur le ftp du NCBI. 
   Attention avec la fonction `read.table()` : les séparateurs de champs sont des tabulations (utiliser `sep="\t"`), il y a un header (utiliser `header=TRUE`), les apostrophes ne doivent pas être considéré comme des guillemets contrairement aux vrais guillemets (`"`) (utiliser `quote="\""`) et la ligne commençant par un `#` ne devrait pas être traitée comme une ligne de commentaires puisque c'est celle qui contient le nom des colonnes (utiliser `comment.char=""`).  Note : il est possible d'utiliser l'url du fichier directement dans la fonction `read.table()` sans avoir à télécharger le fichier sur le disque préalablement.
-> - compter le nombre total de génomes séquencés par espèce (fonction `table()`)
-> - récupérez les coordonnées des taxids ayant au moins un génome séquencé.
-> - visualiser le nombre de génomes séquencés par espèce sous forme de cercles de taille proportionnelle à cette valeur.
-> - visualiser le nombre de génomes séquencés par espèce sous forme de cercles de même diamètre mais avec un dégradé de couleurs. 
-> - compter puis visualiser ensuite le **nombre** de génomes entièrement assemblés (`Status == "Chromosome"`)
-> - Visualiser la **proportion** de génomes entièrement assemblés par espèce.  
+> - créer un data.frame contenant pour chaque taxid existant dans le fichier récupéré au NCBI : 
+>    - les coordonnées lat/lon
+>    - le nom latin
+>    - le nombre total de génomes séquencés (fonction `table()`)
+>    - le nombre de ces génomes entièrement assemblés (`Status == "Chromosome"`)
+>    - le taux de GC **moyen**
+>    - la taille **moyenne** des génomes en Mb
+
 ```r
-##récupérer les infos
+##RÉCUPÉRER LES DONNÉES
 EukGenomeInfo<-read.table("ftp://ftp.ncbi.nlm.nih.gov/genomes/GENOME_REPORTS/eukaryotes.txt", sep="\t", header=T, quote="\"", comment.char="")
-###table du nombre de génomes séquencés
+## liste unique des taxid
+taxids<-unique(EukGenomeInfo$TaxID)
+
+## RÉCUPÉRER LES COORDONNÉES
+DF<-GetCooFromTaxID(taxids)
+
+## CALCULER LE NOMBRE DE GÉNOMES SÉQUENCÉS POUR CHAQUE TAXID
 nbGenomeSequenced<-table(EukGenomeInfo$TaxID)
-### liste des taxids uniques
-taxidsofinterest<-names(nbGenomeSequenced)
-### coordonnées 
-coo<-GetCooFromTaxID(taxidsofinterest)
-coo$nbGsequenced<-as.numeric(nbGenomeSequenced[coo$taxid])
-### carte
-m<-newmap(coo)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGsequenced/10, color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, popup = as.character(coo$nbGsequenced))
+## l'ajouter à DF
+DF$nbGenomeSequenced<-as.numeric(nbGenomeSequenced[DF$taxid])
+
+##CALCULER LE NB DE GENOMES ENTIEREMENT ASSEMBLES POUR CHAQUE TAXID
+##le calcul pour un seul taxid nommé 'tid' serait :
+sum(EukGenomeInfo[which(EukGenomeInfo$TaxID=='tid'),]$Status=="Chromosome")
+##on peut utiliser la fonction sapply pour le faire pour chaque taxid 
+nbGenomeAssembled<-sapply(DF$taxid, function(x,tab) sum(tab[which(tab$TaxID==x),]$Status=="Chromosome"), tab=EukGenomeInfo)
+DF$nbGenomeAssembled<-nbGenomeAssembled
+
+##CALCULER LE TAUX de GC MOYEN  
+tauxgcmoyen<-sapply(DF$taxid, function(x,tab) mean(as.numeric(as.character(tab[which(tab$TaxID==x),]$GC.)), na.rm=TRUE), tab=EukGenomeInfo)
+DF$tauxgcmoyen<-tauxgcmoyen
+
+##CALCULER LA TAILLE MOYENNE DES GÉNOMES EN Mb
+SizeGenomeMb<-sapply(DF$taxid, function(x,tab) mean(tab[which(tab$TaxID==x),]$Size..Mb., na.rm=TRUE), tab=EukGenomeInfo)
+DF$SizeGenomeMb<-SizeGenomeMb 
+
+### REGARDER OÙ SONT TOUS CES GÉNOMES SUR LA CARTE
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = 10, color = "red", stroke = TRUE, fillOpacity = 0.5, label=~sci_name)
 m
+```
+
+#### Varier la taille des marqueurs
+
+> **Exo 6**
+>  - visualiser *successivement* sous forme de cercles de taille proportionnelle (fonction `addCircleMarkers()`)
+>    - le nombre total de génomes séquencés
+>    - le nombre de ces génomes entièrement assemblés
+>    - la **proportion** des génomes séquencés qui sont entièrement assemblés
+> Trouver à chaque fois la meilleure transformation des données pour rendre le résultat le plus lisible. 
+
+```r
+##nombre de génome séquencés
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGenomeSequenced/10, 
+color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
+popup = ~as.character(nbGenomeSequenced))
+m
+
+##nombre de génome assemblés
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGenomeAssembled/10, 
+color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
+popup = ~as.character(nbGenomeAssembled))
+m
+
+##proportion des génomes assemblés
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~(nbGenomeAssembled/nbGenomeSequenced)*10, 
+color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name)
+m
+
+```
+
+#### Varier la couleur des marqueurs
+Il est possible, au lieu (ou en plus) d'utiliser la taille des marqueurs, d'utiliser leur couleur pour représenter les données d'intérêt. De nombreuses façon d'associer des données discrètes ou continues à des couleurs existent en R. Nous utiliserons les fonctions et les approches décrites ici : https://rstudio.github.io/leaflet/colors.html
+En substance : 
+la fonction `colorNumeric()` du package `leaflet` prend en entrée une palette de couleurs et un ensemble de valeurs. Elle renvoie une fonction qui lorsqu'elle est appelée avec une ou plusieurs valeurs en arguments, renvoie une/des couleurs.
+Certains packages R proposent des palettes de couleur utilisables avec cette fonction. Par exemple `RColorBrewer` ou `viridis`. Il faudra les installer avant.
+```r
+##charger un package contenant des palettes de couleur
+library(RColorBrewer) #ou "viridis" qui contient de bonnes couleurs aussi
+## créer la fonction de palette
+pal<-colorNumeric("Greens",0:100) ##green est une des palettes de RColorBrewer. Taper 
+                 ## display.brewer.all() pour les voir toutes
+## tester la palette
+pal(12) # "#00FF00"
+pal(c(12,1,24)) # "#00FF00" "#00FF00" "#00FF00"
+pal(101) #impossible ! car 101 est en dehors de l'intervalle possible. 
+```
+> **Exo 7**
+>  - visualiser *successivement* sous forme de cercles de couleurs différentes 
+>    - le taux de GC moyen 
+>    - la taille moyenne des génomes séquencés en Mb. 
+>    - La couleur est elle une bonne façon de représenter cette dernière variable. Pourquoi ? Que suggérez vous ?   
+>    - Pensez à ajoutez une légende à chaque fois (fonction `addLegend()`)
+
+
+```r
+##taux de GC moyen
+library(RColorBrewer)
+pal<-colorNumeric("Spectral",DF$tauxgcmoyen)
+
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius=5, 
+fillColor = ~pal(tauxgcmoyen), stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
+popup = ~paste(as.character(tauxgcmoyen)," %", sep=""))
+## et la légende
+m<-addLegend(m, position = "bottomright", pal = pal, values = ~tauxgcmoyen)
+m
+
+
+##taille des génomes
+library(RColorBrewer)
+pal<-colorNumeric("Spectral",DF$SizeGenomeMb)
+
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius=5, 
+fillColor = ~pal(SizeGenomeMb), stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
+popup = ~paste(as.character(SizeGenomeMb)," Mb", sep=""))
+## et la légende
+m<-addLegend(m, position = "bottomright", pal = pal, values = ~SizeGenomeMb)
+m
+
 ```
 
 ### 4. Aller plus loin dans l'interactivité avec shiny 
@@ -239,8 +346,8 @@ Notez l'utilisation de la fonction `leafletProxy()` qui remplace la fonction `le
 
 Notez l'utilisation de `reactive` et `observe`. 
 La différence entre les deux est ténue mais on peut dire que : 
-- la fonction `reactive()` surveille si des données en entrée changent, et renvoie une valeur utilisée à l'extérieur. 
-- la fonction `observe()` ne renvoie pas de données en dehors. Elle surveille simplement si les données à l'intérieur changent. 
+- la fonction `reactive()` surveille si des données en entrée changent, et renvoie une nouvelle valeur, utilisée à l'extérieur. 
+- la fonction `observe()` ne renvoie pas de données en dehors. Elle surveille simplement si les données à l'intérieur changent et agit en conséquence (ici pour updater les layers). 
 
 ```r
 library(shiny)
@@ -297,8 +404,15 @@ shinyApp(ui, server)
 ```
 
 > **Exo 6**
-> - En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices précédents, créez une application Shiny fonctionnelle permettant de visualiser des données biologiques (celles vues dans les exercices précédents) sur Lifemap. 
-> Attention : Ne pas oublier de mettre des légendes.
+> En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices précédents et dans les séances précédentes, vous allez créer une une application Shiny fonctionnelle permettant de visualiser des données de biologiques vues plus haut, de façon interactive. Plus spécifiquement, l'application permettra : 
+> - de visualiser (selectInput)
+>   - le taux de GC des génomes
+>   - leur taille en Mb
+>  - de filtrer
+>    - par Groupe (Fungi, Animal, Plant, Protist) 
+>    - par date de séquençage (avec un slider)
+>
+> Ne pas oublier les légendes.
 
 ___
 ##### Aller plus loin
