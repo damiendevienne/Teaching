@@ -14,6 +14,7 @@ Ce TP vise à appréhender l'utilisation de Lifemap depuis R, et se familiariser
   * Varier la taille des marqueurs (nombre de génomes séquencés et/ou assemblés)
   * Varier la couleur des marqueurs (%GC, taille des génomes)
   * La notion de 'groupes'
+  * Tracer des lignes
 * **4. Aller plus loin dans l'interactivité avec shiny**
   * Exemple d'application cartographique simple avec shiny et leaflet
   * Création d'une application Lifemap pour visualiser les données issues du séquençage 
@@ -244,8 +245,6 @@ DF$tauxgcmoyen<-tauxgcmoyen
 SizeGenomeMb<-sapply(DF$taxid, function(x,tab) mean(tab[which(tab$TaxID==x),]$Size..Mb., na.rm=TRUE), tab=EukGenomeInfo)
 DF$SizeGenomeMb<-SizeGenomeMb 
 
-##GROUPE AUQUEL CHAQUE TAXID apprtient  
-
 ### REGARDER OÙ SONT TOUS CES GÉNOMES SUR LA CARTE
 m<-newmap(DF)
 m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = 10, color = "red", stroke = TRUE, fillOpacity = 0.5, label=~sci_name)
@@ -365,8 +364,59 @@ m<-addLayersControl(m,
   )
 m
 ```
+#### Tracer des lignes (polyLines)
+Le code ci-dessous permet de récupérer la liste des taxids ascendants (jusqu'à LUCA) pour un taxid donné. 
 
+```r
+library("jsonlite")
+GetAscendFromTaxID<-function(taxids) {
+  ##taxids is an array that contains taxids.
+  ## url cannot be too long, so that we need to cut the taxids (100 max in one chunk)
+  ## and make as many requests as necessary.
+  taxids<-as.character(taxids) #change to characters.
+  DATA<-NULL
+  i<-1
+  while(i<=length(taxids)) {
+    cat(".")
+    taxids_sub<-taxids[i:(i+99)]
+    taxids_sub<-taxids_sub[!is.na(taxids_sub)]
+    taxids_sub<-paste(taxids_sub, collapse="%20") #accepted space separator in url
+    url<-paste("http://lifemap-ncbi.univ-lyon1.fr:8080/solr/addi/select?q=taxid:(",taxids_sub,")&wt=json&rows=1000",sep="", collapse="")
+    #do the request :
+    data_sub<-fromJSON(url)
+    ##ajouter le taxid quary à la liste
+    res<-sapply(1:length(data_sub$response$docs$ascend), function(x,y,z) c(y[[x]],z[[x]]), y=data_sub$response$docs$taxid, z=data_sub$response$docs$ascend)
+    DATA<-c(DATA,res)
+    i<-i+100
+  } 
+  if (!is.list(DATA)) DATA<-list(DATA) ##si un seul taxid demandé
+  return(DATA)
+}
+```
+> **Exo 9**
+> - Récupérer les "chemins" allant de *Microbotryium violaceum* (taxid=5272) et *Homo sapiens* (taxid=9606) à la racine de l'arbre du vivant.
+> - Récupérer les coordonnées des taxids formant ces chemins
+> - tracer les deux chemins et identifier ainsi à l'oeil le MRCA* de ces deux espèces. 
+> - Ajouter un nouveau marqueur au niveau de ce MRCA
+>
+>*MRCA = Most Recent Common Ancestor
+```r
+chemins<-GetAscendFromTaxID(c(5272, 9606))
+coo.chemins<-lapply(chemins, GetCooFromTaxID)
+#Attention les taxids sont mélangés ! 
+chemins<-GetAscendFromTaxID(c(5272, 9606))
+coo.chemins<-lapply(chemins, GetCooFromTaxID)
+coo.chemins[[1]]<-coo.chemins[[1]][match(chemins[[1]][chemins[[1]]!=0], coo.chemins[[1]]$taxid),]
+coo.chemins[[2]]<-coo.chemins[[2]][match(chemins[[2]][chemins[[2]]!=0], coo.chemins[[2]]$taxid),]
 
+mrcaIndex<-which(is.element(chemins[[1]], chemins[[2]]))[1]
+
+m<-newmap()
+m<-addPolylines(m, lng=coo.chemins[[1]]$lon, lat=coo.chemins[[1]]$lat, color="red")
+m<-addPolylines(m, lng=coo.chemins[[2]]$lon, lat=coo.chemins[[2]]$lat, color="red")
+m<-addMarkers(m, lng=coo.chemins[[1]]$lon[mrcaIndex],lat=coo.chemins[[1]]$lat[mrcaIndex], label="MRCA")
+m
+```
 
 ### 4. Aller plus loin dans l'interactivité avec shiny 
 On voit dans l'exemple précédent que rendre la carte interactive (au delà du zoom) est très limité si l'on se cantonne à l'utilisation du package `leaflet`. La fonction `addLayersControl()` peut être oubliée si l'on passe à l'utilisation de **Shiny**, qui vous a été présenté dans une séance antérieure. Un tutoriel peut aussi être trouvé ici : https://shiny.rstudio.com/tutorial/
@@ -435,7 +485,7 @@ shinyApp(ui, server)
 ```
 #### Création d'une application Lifemap pour visualiser les données issues du séquençage 
 
-> **Exo 9**
+> **Exo 10**
 > En vous inspirant de ce code, et en vous reposant sur ce que vous avez vu dans les exercices et dans les séances précédentes, vous allez créer une une application Shiny fonctionnelle permettant de visualiser les données vues plus haut, de façon interactive. Plus spécifiquement, l'application permettra : 
 > - de visualiser (selectInput) dans un premier bloc : 
 >   - le nombre de génomes séquencés
