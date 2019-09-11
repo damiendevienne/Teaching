@@ -27,14 +27,7 @@ En R, avec le package ape, il est simple de générer de arbres avec la fonction
 > - Installer ape 
 > - Générer un arbre de N feuilles (N petit puis N grand)
 > - Le visualiser. Observer le problème.
-```r
-install.packages(ape) ## ou require(ape) si déjà installé
-tree<-rtree(12)
-plot(tree) ### OK
-tree2<-rtree(1000)
-plot(tree) ### PAS OK
-plot(tree, show.tip.label=F, type="u") 
-```
+
 Pour aller plus loin dans la visualisation d'arbres avec R : utiliser le package ggtree. Bonne présentation par l'auteur des fonctionnalitées ici : https://guangchuangyu.github.io/presentation/2016-ggtree-chinar/. 
 
 
@@ -60,47 +53,12 @@ m<-addMarkers(m, lng=4.85, lat=45.75, label="Ici Lyon")
 > - Ajouter (en plus de lyon) un marqueur sur la ville de Paris (longitude = 48.85, latitude = 2.35) et visualiser à nouveau la carte. Qu'observe-t-on ?
 > - Écrire une fonction permettant de 'recharger' une carte vierge (utile pour la suite du TP).
 
-```r
-install.packages(leaflet) ## ou require(leaflet) si déjà installé
-m<-leaflet()
-m<-addTiles(m, url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-m<-addMarkers(m, lng=4.85, lat=45.75, label="Ici Lyon")
-m  # Print the map
-## mettre un marqueur sur Paris
-m<-addMarkers(m, lng=2.35, lat=48.85, label="Ici Paris")
-## on remarque que les marqueurs s'ajoutent ! 
-
-## Fonction pour charger une carte vierge:
-newmap<-function() {
-    map<-leaflet()
-    map<-addTiles(map, url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-    return(map)
-}
-## Pour créer une nouvelle carte il suffit ensuite de taper : 
-m<-newmap()
-## Pour voir la carte : 
-m 
-```
 La fonction `leaflet()`peut aussi prendre en entrée des données avec `leaflet(data=...)`, sous forme de data.frame ou autre. Il est ensuite possible de faire référence aux éléments présents dans le data frame depuis les fonctions `addMarkers()`, `addCircles()`, `addCircleMarkers()`, etc. en ne mentionnant que le nom de la colonne d'intérêt précédé du tilde (`~lat` pour latitude par exemple). 
 
 > **Exo 3**
-> - Créer une data.frame avec les noms "Lyon" et "Paris" dans la première colonne, leurs longitude dans la seconde et leur latitude dans la troisième.
+> - Créer une data.frame avec les noms "Lyon" et "Paris" dans la première colonne, leur longitude dans la seconde et leur latitude dans la troisième.
 > - Visualiser les marqueurs pour ces deux villes en donnant ce data.frame en entrée à la fonction `leaflet()`
 > - Modifier la fonction permettant de recharger une carte nouvelle pour permettre de prendre un data frame en entrée.
-```r
-dd<-data.frame(cities=c("Paris","Lyon"), longi=c(2.35, 4.85),lati=c(48.85,45.75))
-m<-leaflet(dd)
-m<-addTiles(m, url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-m<-addMarkers(m, lng=~longi,lat=~lati)
-m
-
-##fonction mise à jour :
-newmap<-function(data=NULL) {
-    map<-leaflet(data)
-    map<-addTiles(map, url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-    return(map)
-}
-```
 
 #### Passage à Lifemap (tuiles + données dans Solr)
 Les tuiles de Lifemap ont pour url http://lifemap-ncbi.univ-lyon1.fr/osm_tiles/{z}/{x}/{y}.png. 
@@ -117,61 +75,6 @@ Une requête des taxid 2, 9443 et 2087 sur le "coeur" `taxo` (qui contient les d
 > - Récupérer les coordonnées des trois taxids de l'exemple et les représenter dans Lifemap sous forme forme de ronds (fonction `addCircleMarkers()`).
 > - Jouer avec l'opacité, la présence de bordure, la couleur, la taille, etc. Taper `?addCircleMarker()` dans R pour avoir de l'aide.
 > - [rigolo] : n'importe quelle image peut servir d'icône de marqueur. On peut par exemple mettre une [silhouette de cheval](https://svgsilh.com/png-512/156496-cddc39.png) à *Equus caballus* (taxid : 9796). Essayez si vous avez le temps (explication détaillée [ici](https://rstudio.github.io/leaflet/markers.html)).
-```r
-##nouvelle fonction pour visualiser Lifemap
-newmap<-function(df=NULL) {
-    map<-leaflet(df)
-    map<-addTiles(map, url="http://lifemap-ncbi.univ-lyon1.fr/osm_tiles/{z}/{x}/{y}.png", options = tileOptions(maxZoom = 42))
-    return(map)
-}
-m<-newmap()
-
-## fonction pour requêtes solr : 
-install.packages("jsonlite")
-require(jsonlite)
-GetCooFromTaxID<-function(taxids) {
-  ##taxids is an array that contains taxids.
-  ## url cannot be too long, so that we need to cut the taxids (100 max in one chunk)
-  ## and make as many requests as necessary.
-  taxids<-as.character(taxids) #change to characters.
-  DATA<-NULL
-  i<-1
-  while(i<=length(taxids)) {
-    cat(".")
-    taxids_sub<-taxids[i:(i+99)]
-    taxids_sub<-taxids_sub[!is.na(taxids_sub)]
-    taxids_sub<-paste(taxids_sub, collapse="%20") #accepted space separator in url
-    url<-paste("http://lifemap-ncbi.univ-lyon1.fr:8080/solr/taxo/select?q=taxid:(",taxids_sub,")&wt=json&rows=1000",sep="", collapse="")
-    #do the request :
-    data_sub<-fromJSON(url)
-    DATA<-rbind(DATA,data_sub$response$docs[,c("taxid","lon","lat", "sci_name","zoom","nbdesc")])
-    i<-i+100
-  } 
-  for (j in 1:ncol(DATA)) DATA[,j]<-unlist(DATA[,j])
-  class(DATA$taxid)<-"character"
-  return(DATA)
-}
-
-##test de la fonction
-data<-GetCooFromTaxID(c(2,9443,2087))
-
-##Mettre les repères sur la carte sous forme de ronds rouuges
-m<-newmap(data)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, stroke = FALSE, 
-fillOpacity = 0.5,color="red", label=~sci_name)
-m
-
-### Utiliser une image comme icône à la place du marqueur classique 
-equus<-GetCooFromTaxID(9796) #récupérer coordonnées cheval
-equusIcon <- makeIcon(
-  iconUrl = "https://svgsilh.com/png-512/156496-cddc39.png",
-  iconWidth = 51.2, iconHeight = 42,
-  iconAnchorX = 25.6, iconAnchorY = 21,
-)
-m<-newmap(equus)
-m<-addMarkers(m, lng=~lon, lat=~lat, icon = equusIcon)
-m #voir !
-```
 
 ### 3. Visualiser des données génomiques sur Lifemap
 Le but est de récupérer des données génomiques que nous pouvons associer aux espèces de l'arbre de la vie et visualiser sur Lifemap. 
@@ -244,11 +147,6 @@ DF$tauxgcmoyen<-tauxgcmoyen
 ##CALCULER LA TAILLE MOYENNE DES GÉNOMES EN Mb
 SizeGenomeMb<-sapply(DF$taxid, function(x,tab) mean(tab[which(tab$TaxID==x),]$Size..Mb., na.rm=TRUE), tab=EukGenomeInfo)
 DF$SizeGenomeMb<-SizeGenomeMb 
-
-### REGARDER OÙ SONT TOUS CES GÉNOMES SUR LA CARTE
-m<-newmap(DF)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = 10, color = "red", stroke = TRUE, fillOpacity = 0.5, label=~sci_name)
-m
 ```
 
 #### Varier la taille des marqueurs
@@ -259,29 +157,6 @@ m
 >    - le nombre de ces génomes entièrement assemblés
 >    - la **proportion** des génomes séquencés qui sont entièrement assemblés
 > Trouver à chaque fois la meilleure transformation des données pour rendre le résultat le plus lisible. 
-
-```r
-##nombre de génome séquencés
-m<-newmap(DF)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGenomeSequenced/10, 
-color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
-popup = ~as.character(nbGenomeSequenced))
-m
-
-##nombre de génome assemblés
-m<-newmap(DF)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGenomeAssembled/10, 
-color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
-popup = ~as.character(nbGenomeAssembled))
-m
-
-##proportion des génomes assemblés
-m<-newmap(DF)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~(nbGenomeAssembled/nbGenomeSequenced)*10, 
-color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name)
-m
-
-```
 
 #### Varier la couleur des marqueurs
 Il est possible, au lieu (ou en plus) d'utiliser la taille des marqueurs, d'utiliser leur couleur pour représenter les données d'intérêt. De nombreuses façon d'associer des données discrètes ou continues à des couleurs existent en R. Nous utiliserons les fonctions et les approches décrites ici : https://rstudio.github.io/leaflet/colors.html
@@ -307,37 +182,11 @@ pal(101) #impossible ! car 101 est en dehors de l'intervalle possible.
 >    - Pensez à ajoutez une légende à chaque fois (fonction `addLegend()`)
 
 
-```r
-##taux de GC moyen
-library(RColorBrewer)
-pal<-colorNumeric("Spectral",DF$tauxgcmoyen)
-
-m<-newmap(DF)
-m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius=5, 
-fillColor = ~pal(tauxgcmoyen), stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
-popup = ~paste(as.character(tauxgcmoyen)," %", sep=""))
-## et la légende
-m<-addLegend(m, position = "bottomright", pal = pal, values = ~tauxgcmoyen, title = "%GC moyen des génomes séquencés")
-m
-
-
-##taille des génomes
-library(RColorBrewer)
-pal<-colorNumeric("Spectral",DF$SizeGenomeMb, reverse=TRUE)
-
-m<-newmap(DF)
-## et la légendem<-addCircleMarkers(m, lng=~lon, lat=~lat, radius=~SizeGenomeMb^(1/3), 
-fillColor = ~pal(SizeGenomeMb), stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
-popup = ~paste(as.character(SizeGenomeMb)," Mb", sep=""))
-m<-addLegend(m, position = "bottomright", pal = pal, values = ~SizeGenomeMb, title="Size of genomes in Mb")
-m
-
-```
 #### La notion de 'groupes'
 Il est possible d'associer les marqueurs à des groupes puis de décider d'afficher tel ou tel groupe de façon sélective. Il suffit
 - d'ajouter `group="groupname"` aux arguments des fonctions `addCircleMarkers()` et éventuellement `addLegend()` (si les différents groupes ont différentes légendes.
 > **Exo 8**
->  - Créez des marqueurs distincts pour le taux de GC des Fungi, Animals, Plants, Protists et Others (nécessite de mettre à jour le data.frame servant en entrée)
+>  - Créez des marqueurs distincts pour le taux de GC des Fungi, Animals, Plants, Protists et Others (nécessite de mettre à jour le data.frame servant en entrée (code ci-dessous).
 >  - Utilisez ensuite la fonction `addLayersControl()` pour permettre à l'utilisateur de la carte de choisir pour quel(s) groupe(s) d'espèces il souhaite voir la donnée. 
 ```r
 ##ajouter une colonne à DF avec le Group:
@@ -345,24 +194,6 @@ TaxID.et.Group<-EukGenomeInfo[!duplicated(EukGenomeInfo$TaxID),c("TaxID","Group"
 groups<-as.character(TaxID.et.Group[,2])
 names(groups)<-TaxID.et.Group[,1]
 DF$Group<-groups[DF$taxid]
-
-pal<-colorNumeric("Spectral",DF$tauxgcmoyen, reverse=TRUE)
-m<-newmap(DF)
-
-#size
-for (i in unique(DF$Group)) {
-  print(i)
-  m<-addCircleMarkers(m, lng=~lon[Group==i], lat=~lat[Group==i], radius=10, 
-  fillColor = ~palgc(tauxgcmoyen[Group==i]), stroke = FALSE, fillOpacity = 0.5, label=~sci_name[Group==i], 
-  popup = ~paste(as.character(tauxgcmoyen[Group==i])," %", sep=""), group=i)
-  }
-  
-m<-addLegend(m, position = "bottomright", pal = palgc, values = ~tauxgcmoyen)
-m<-addLayersControl(m,
-    overlayGroups = unique(DF$Group),
-    options = layersControlOptions(collapsed = TRUE)
-  )
-m
 ```
 #### Tracer des lignes (polyLines)
 Le code ci-dessous permet de récupérer la liste des taxids ascendants (jusqu'à LUCA) pour un taxid donné. 
@@ -396,27 +227,11 @@ GetAscendFromTaxID<-function(taxids) {
 > **Exo 9**
 > - Récupérer les "chemins" allant de *Microbotryium violaceum* (taxid=5272) et *Homo sapiens* (taxid=9606) à la racine de l'arbre du vivant.
 > - Récupérer les coordonnées des taxids formant ces chemins
-> - tracer les deux chemins et identifier ainsi à l'oeil le MRCA* de ces deux espèces. 
+> - tracer les deux chemins et identifier ainsi le MRCA* de ces deux espèces. 
 > - Ajouter un nouveau marqueur au niveau de ce MRCA
 >
 >*MRCA = Most Recent Common Ancestor
-```r
-chemins<-GetAscendFromTaxID(c(5272, 9606))
-coo.chemins<-lapply(chemins, GetCooFromTaxID)
-#Attention les taxids sont mélangés ! 
-chemins<-GetAscendFromTaxID(c(5272, 9606))
-coo.chemins<-lapply(chemins, GetCooFromTaxID)
-coo.chemins[[1]]<-coo.chemins[[1]][match(chemins[[1]][chemins[[1]]!=0], coo.chemins[[1]]$taxid),]
-coo.chemins[[2]]<-coo.chemins[[2]][match(chemins[[2]][chemins[[2]]!=0], coo.chemins[[2]]$taxid),]
 
-mrcaIndex<-which(is.element(chemins[[1]], chemins[[2]]))[1]
-
-m<-newmap()
-m<-addPolylines(m, lng=coo.chemins[[1]]$lon, lat=coo.chemins[[1]]$lat, color="red")
-m<-addPolylines(m, lng=coo.chemins[[2]]$lon, lat=coo.chemins[[2]]$lat, color="red")
-m<-addMarkers(m, lng=coo.chemins[[1]]$lon[mrcaIndex],lat=coo.chemins[[1]]$lat[mrcaIndex], label="MRCA")
-m
-```
 
 ### 4. Aller plus loin dans l'interactivité avec shiny 
 On voit dans l'exemple précédent que rendre la carte interactive (au delà du zoom) est très limité si l'on se cantonne à l'utilisation du package `leaflet`. La fonction `addLayersControl()` peut être oubliée si l'on passe à l'utilisation de **Shiny**, qui vous a été présenté dans une séance antérieure. Un tutoriel peut aussi être trouvé ici : https://shiny.rstudio.com/tutorial/
