@@ -30,3 +30,16 @@ GetCooFromTaxID<-function(taxids) {
   return(DATA)
 }
 ```
+
+
+```r
+##CALCULER LE TAUX de GC MOYEN  
+tauxgcmoyen<-sapply(DF$taxid, function(x,tab) mean(as.numeric(as.character(tab[which(tab$TaxID==x),]$GC.)), na.rm=TRUE), tab=EukGenomeInfo)
+DF$tauxgcmoyen<-tauxgcmoyen
+
+##CALCULER LA TAILLE MOYENNE DES GÉNOMES EN Mb
+SizeGenomeMb<-sapply(DF$taxid, function(x,tab) mean(as.numeric(as.character(tab[which(tab$TaxID==x),]$Size..Mb.)), na.rm=TRUE), tab=EukGenomeInfo)
+DF$SizeGenomeMb<-SizeGenomeMb 
+
+```
+
