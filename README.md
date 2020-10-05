@@ -4,6 +4,7 @@ Ici se trouvent les documents pour l'enseignement.
 # CODE
 
 ## fonction pour requêtes solr : 
+```r
 install.packages("jsonlite")
 require(jsonlite)
 GetCooFromTaxID<-function(taxids) {
@@ -28,3 +29,4 @@ GetCooFromTaxID<-function(taxids) {
   class(DATA$taxid)<-"character"
   return(DATA)
 }
+```
