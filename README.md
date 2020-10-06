@@ -5,8 +5,18 @@ Ici se trouvent les documents pour l'enseignement.
 
 ## fonction pour requêtes solr : 
 ```r
+
 require(jsonlite)
 require(leaflet)
+
+
+###CRÉER UNE CARTE LIFEMAP VIERGE
+newmap<-function(df=NULL) {
+    map<-leaflet(df)
+    map<-addTiles(map, url="http://lifemap-ncbi.univ-lyon1.fr/osm_tiles/{z}/{x}/{y}.png", options = tileOptions(maxZoom = 42))
+    return(map)
+}
+
 
 ###RÉCUPÉRER LES COORDONNÉES DES ESPÈCES
 GetCooFromTaxID<-function(taxids) {
