@@ -1,9 +1,8 @@
 # Enseignement
 Ici se trouvent les documents pour l'enseignement.
 
-# Correction
+# Correction code R
 
-## fonction pour requêtes solr : 
 ```r
 
 require(jsonlite)
