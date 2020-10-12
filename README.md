@@ -75,4 +75,28 @@ m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = 10, color = "red", stroke = 
 m
 
 
+###############################
+###############################
+
+##nombre de génome séquencés
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGenomeSequenced/10, 
+color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
+popup = ~as.character(nbGenomeSequenced))
+m
+
+##nombre de génome assemblés
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~nbGenomeAssembled/10, 
+color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, 
+popup = ~as.character(nbGenomeAssembled))
+m
+
+##proportion des génomes assemblés
+m<-newmap(DF)
+m<-addCircleMarkers(m, lng=~lon, lat=~lat, radius = ~(nbGenomeAssembled/nbGenomeSequenced)*10, 
+color = "red", stroke = FALSE, fillOpacity = 0.5, label=~sci_name, popup=~paste(as.character((nbGenomeAssembled/nbGenomeSequenced)*100),"%",sep=""))
+m
+
+
 ```
